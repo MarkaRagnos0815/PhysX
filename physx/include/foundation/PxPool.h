@@ -50,7 +50,14 @@ class PxPoolBase : public PxUserAllocated, public Alloc
 	: Alloc(alloc), mSlabs(alloc), mElementsPerSlab(elementsPerSlab), mUsed(0), mSlabSize(slabSize), mFreeElement(0)
 	{
 		mSlabs.reserve(64);
+#if PX_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif // PX_CLANG
 		PX_COMPILE_TIME_ASSERT(sizeof(T) >= sizeof(size_t));
+#if PX_CLANG
+#pragma clang diagnostic pop
+#endif
 	}
 
   public:

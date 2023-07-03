@@ -20,26 +20,25 @@ def cmakeExt():
 
 
 def filterPreset(presetName):
-    winPresetFilter = ['win','switch','crosscompile']
-    if sys.platform == 'win32':
+    winPresetFilter = ['win','switch','crosscompile','android']
+    otherPresetFilter = ['win','switch','crosscompile']
+    if sys.platform == 'win32':        
         if any(presetName.find(elem) != -1 for elem in winPresetFilter):
             return True
-    else:
-        if all(presetName.find(elem) == -1 for elem in winPresetFilter):
+    else:        
+        if all(presetName.find(elem) == -1 for elem in otherPresetFilter):
             return True
     return False
 
-def noPresetProvided(physx_root_dir):
+def noPresetProvided():
     global input
     print('Preset parameter required, available presets:')
-    internal_presets = os.path.join(physx_root_dir, "buildtools", "presets", "*.xml")
-    public_presets = os.path.join(physx_root_dir, "buildtools", "presets", "public", "*.xml")
     presetfiles = []
-    for file in glob.glob(internal_presets):
+    for file in glob.glob("buildtools/presets/*.xml"):
         presetfiles.append(file)
 
     if len(presetfiles) == 0:
-        for file in glob.glob(public_presets):
+        for file in glob.glob("buildtools/presets/public/*.xml"):
             presetfiles.append(file)
 
     counter = 0
@@ -55,29 +54,30 @@ def noPresetProvided(physx_root_dir):
                 print('(' + str(counter) + ') ' + presetXml.get('name') +
                     '.user <--- ' + presetXml.get('comment'))
                 presetList.append(presetXml.get('name') + '.user')
-            counter = counter + 1
+            counter = counter + 1            
     # Fix Python 2.x.
-    try:
+    try: 
     	input = raw_input
-    except NameError:
-    	pass
+    except NameError: 
+    	pass    
     mode = int(eval(input('Enter preset number: ')))
     return presetList[mode]
 
 class CMakePreset:
     presetName = ''
     targetPlatform = ''
+    targetToolSet = ''
     compiler = ''
     generator = ''
     cmakeSwitches = []
     cmakeParams = []
 
-    def __init__(self, presetName, physx_root_dir):
-        xmlPath = os.path.join(physx_root_dir, "buildtools", "presets", f"{presetName}.xml")
+    def __init__(self, presetName):
+        xmlPath = "buildtools/presets/"+presetName+'.xml'
         if os.path.isfile(xmlPath):
             print('Using preset xml: '+xmlPath)
         else:
-            xmlPath = os.path.join(physx_root_dir, "buildtools", "presets", "public", f"{presetName}.xml")
+            xmlPath = "buildtools/presets/public/"+presetName+'.xml'
             if os.path.isfile(xmlPath):
                 print('Using preset xml: '+xmlPath)
             else:
@@ -91,6 +91,10 @@ class CMakePreset:
             self.targetPlatform = platform.attrib['targetPlatform']
             self.compiler = platform.attrib['compiler']
             self.generator = platform.get('generator')
+            
+            if 'targetToolSet' in platform.attrib:
+                self.targetToolSet = platform.attrib['targetToolSet']
+           
             print('Target platform: ' + self.targetPlatform +
                   ' using compiler: ' + self.compiler)
             if self.generator is not None:
@@ -107,6 +111,14 @@ class CMakePreset:
                 cmParam = '-D' + cmakeParam.attrib['name'] + '=\"' + \
                     os.environ['PHYSX_ROOT_DIR'] + '/' + \
                     cmakeParam.attrib['value'] + '\"'
+            elif cmakeParam.attrib['name'] == 'ANDROID_ABI':
+                cmParam = '-D' + \
+                    cmakeParam.attrib['name'] + '=\"' + \
+                    cmakeParam.attrib['value'] + '\"'
+                if cmakeParam.attrib['value'].startswith('arm'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=arm'
+                elif cmakeParam.attrib['value'].startswith('x86'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=x86'
             else:
                 cmParam = '-D' + \
                     cmakeParam.attrib['name'] + '=' + \
@@ -118,6 +130,8 @@ class CMakePreset:
         if self.targetPlatform == 'linux':
             return False
         elif self.targetPlatform == 'linuxAarch64':
+            return False
+        elif self.targetPlatform == 'android':
             return False
         return True
 
@@ -140,12 +154,13 @@ class CMakePreset:
                         if os.environ.get('PM_clang_PATH') is not None:
                             outString = outString + ' -DCMAKE_CUDA_HOST_COMPILER=' + \
                                 os.environ['PM_clang_PATH'] + '/bin/clang++'
+
         return outString
 
     def getCMakeParams(self):
         outString = ''
         for cmakeParam in self.cmakeParams:
-            outString = outString + ' ' + cmakeParam # + ' --trace'
+            outString = outString + ' ' + cmakeParam
         return outString
 
     def getPlatformCMakeParams(self):
@@ -161,6 +176,8 @@ class CMakePreset:
         # Visual studio
         if self.compiler in vs_versions:
             generator = '-G \"Ninja Multi-Config\"' if self.generator == 'ninja' else '-G ' + vs_versions[self.compiler]
+            if self.targetToolSet != None and len(self.targetToolSet) > 0 :
+                generator += ' -T ' + self.targetToolSet
             outString += generator
         # mac
         elif self.compiler == 'xcode':
@@ -172,7 +189,8 @@ class CMakePreset:
                 outString = outString + ' -DCMAKE_MAKE_PROGRAM=' + os.environ['PM_ninja_PATH'] + '/ninja'
             else:
                 outString = outString + '-G \"Unix Makefiles\"'
-
+        elif self.targetPlatform == 'android':
+            outString = outString + '-G \"Unix Makefiles\"'
         if self.targetPlatform == 'win64':
             if self.generator != 'ninja':
                 outString = outString + ' -Ax64'
@@ -201,6 +219,10 @@ class CMakePreset:
                 else:
                     outString = outString + ' -DCMAKE_C_COMPILER=clang'
                     outString = outString + ' -DCMAKE_CXX_COMPILER=clang++'
+            elif self.compiler == 'gcc':
+                outString = outString + ' -DCMAKE_CXX_COMPILER=g++'
+                outString = outString + ' -DCMAKE_C_COMPILER=gcc'
+                
             return outString
         elif self.targetPlatform == 'linuxAarch64':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=linux'
@@ -219,6 +241,50 @@ class CMakePreset:
             outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
             return outString
+        elif self.targetPlatform == 'win32':
+            outString = outString + ' -AWin32'
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=windows'
+            outString = outString + ' -DPX_OUTPUT_ARCH=x86'
+            return outString
+        #### new
+        elif self.targetPlatform == 'switch32':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=switch'
+            outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
+                os.environ['PM_CMakeModules_PATH'] + \
+                '/switch/NX32Toolchain.txt'
+            outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=NX32'
+            return outString
+
+        elif self.targetPlatform == 'android':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=android'
+            if os.environ.get('ANDROID_NDK_HOME') is None:
+                print('Please provide path to android NDK in environment variable ANDROID_NDK_HOME.')
+                exit(-1)
+            else:
+                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
+                    os.environ['ANDROID_NDK_HOME'] + \
+                    '/build/cmake/android.toolchain.cmake'
+                outString = outString + ' -DANDROID_STL=\"c++_static\"'
+                outString = outString + ' -DCM_ANDROID_FP=\"softfp\"'
+                outString = outString + ' -DANDROID_NDK=' + \
+                    os.environ['ANDROID_NDK_HOME']
+                if sys.platform == 'win32':        
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '\\prebuilt\\windows-x86_64\\bin\\make.exe\"'
+                else:
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '/prebuilt/linux-x86_64/bin/make\"'
+            return outString
+        elif self.targetPlatform == 'macArm64':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
+            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
+            return outString
+        elif self.targetPlatform == 'ios64':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=ios'
+            outString = outString + ' -DCMAKE_SYSTEM_NAME=iOS'
+            outString = outString + ' -DCMAKE_SYSTEM_VERSION=1'
+            outString = outString + ' -DCMAKE_OSX_ARCHITECTURES=arm64'
+            outString = outString + ' -DCMAKE_OSX_SYSROOT=iphoneos'
+            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
+            return outString
         return ''
 
 
@@ -236,16 +302,17 @@ def getCommonParams():
     return outString
 
 def cleanupCompilerDir(compilerDirName):
-    if os.path.exists(compilerDirName):
-        if sys.platform == 'win32':
-            os.system('rmdir /S /Q ' + compilerDirName)
-        else:
-            shutil.rmtree(compilerDirName, True)
+    #if os.path.exists(compilerDirName):
+    #    if sys.platform == 'win32':
+    #        os.system('rmdir /S /Q ' + compilerDirName)
+    #    else:
+    #        shutil.rmtree(compilerDirName, True)
     if os.path.exists(compilerDirName) == False:
         os.makedirs(compilerDirName)
+    pass
 
-def presetProvided(pName, physx_root_dir):
-    parsedPreset = CMakePreset(pName, physx_root_dir)
+def presetProvided(pName):
+    parsedPreset = CMakePreset(pName)
 
     print('PM_PATHS: ' + os.environ['PM_PATHS'])
 
@@ -272,25 +339,26 @@ def presetProvided(pName, physx_root_dir):
         cleanupCompilerDir(outputDir)
 
         # run the cmake script
-        #print('Cmake params:' + cmakeParams)
+        print('Cmake params:' + cmakeParams)
         os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
         os.system(cmakeExec + ' \"' +
-                  os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams)
+                  os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams )#+ ' --log-level=ERROR')
         os.chdir(os.environ['PHYSX_ROOT_DIR'])
     else:
         configs = ['debug', 'checked', 'profile', 'release']
         for config in configs:
             # cleanup and create output directory
-            outputDir = os.path.join('compiler', parsedPreset.presetName + '-' + config)
+            outputDir = os.path.join('compiler', parsedPreset.presetName + '-' + config.lower())
             cleanupCompilerDir(outputDir)
 
             # run the cmake script
             #print('Cmake params:' + cmakeParams)
             os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
-            # print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
+            #print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
             os.system(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' +
-                      cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
+                      cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)# + ' --log-level=ERROR')
             os.chdir(os.environ['PHYSX_ROOT_DIR'])
+
     pass
 
 
@@ -298,28 +366,28 @@ def main():
     if (sys.version_info[0] < 3) or (sys.version_info[0] == 3 and sys.version_info[1] < 5):
         print("You are using Python {}. You must use Python 3.5 and up. Please read README.md for requirements.").format(sys.version)
         exit()
-
+        
     physx_root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
     os.environ['PHYSX_ROOT_DIR'] = physx_root_dir.replace("\\", "/")
 
     if len(sys.argv) != 2:
-        presetName = noPresetProvided(physx_root_dir)  # Ensure this function returns the preset name
+        presetName = noPresetProvided()
         if sys.platform == 'win32':
             print('Running generate_projects.bat ' + presetName)
-            cmd_path = os.path.join(physx_root_dir, 'generate_projects.bat')
-            cmd = f'"{cmd_path}" {presetName}'
-            result = subprocess.run(cmd, cwd=physx_root_dir, check=True, shell=True, universal_newlines=True)
+            cmd = 'generate_projects.bat {}'.format(presetName)
+            result = subprocess.run(cmd, cwd=os.environ['PHYSX_ROOT_DIR'], check=True, universal_newlines=True)
             # TODO: catch exception and add capture errors
         else:
             print('Running generate_projects.sh ' + presetName)
-            cmd_path = os.path.join(physx_root_dir, 'generate_projects.sh')
-            cmd = [cmd_path, presetName]
-            result = subprocess.run(cmd, cwd=physx_root_dir, check=True, universal_newlines=True)
+            # TODO: once we have Python 3.7.2 for linux, add the text=True instead of universal_newlines 
+            cmd = './generate_projects.sh {}'.format(presetName)
+            result = subprocess.run(['bash', './generate_projects.sh', presetName], cwd=os.environ['PHYSX_ROOT_DIR'], check=True, universal_newlines=True)
             # TODO: catch exception and add capture errors
     else:
         presetName = sys.argv[1]
         if filterPreset(presetName):
-            presetProvided(presetName, physx_root_dir)
+            presetProvided(presetName)
         else:
             print('Preset not supported on this build platform.')
+
 main()

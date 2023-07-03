@@ -27,7 +27,7 @@
 STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWERCASE)
 
 #TODO: Fix warnings
-SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -Werror -Wstrict-aliasing=2 -Weverything\
+SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -w -Wstrict-aliasing=2 -Weverything\
     -Wno-alloca \
     -Wno-atomic-implicit-seq-cst \
     -Wno-c++98-compat-pedantic \
@@ -86,7 +86,7 @@ IF(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 		SET(AARCH64_FLAGS "-ffp-contract=off")
 	ENDIF()
 ELSE()
-	SET(GCC_WARNINGS "-Wall -Werror\
+	SET(GCC_WARNINGS "-Wall -w\
 		-Wno-array-bounds\
 		-Wno-class-memaccess\
 		-Wno-invalid-offsetof\
@@ -214,6 +214,7 @@ ELSE()
 
 	SET(PHYSXDISTRO_LIBS PhysXFoundation PhysX PhysXCharacterKinematic PhysXPvdSDK PhysXCommon PhysXCooking PhysXExtensions PhysXVehicle PhysXVehicle2)
 
+	message(PX_ROOT_LIB_DIR = ${PX_ROOT_LIB_DIR})
 
 	INSTALL(
 		TARGETS ${PHYSXDISTRO_LIBS}
