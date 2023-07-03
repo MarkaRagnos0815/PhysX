@@ -170,17 +170,13 @@ PX_FORCE_INLINE PxU32 FiniteTestEq(const Vec4V a, const Vec4V b)
 
 #if !PX_EMSCRIPTEN
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wglobal-constructors"
-#endif
 #endif
 const PX_ALIGN(16, PxF32 gMaskXYZ[4]) = { physx::PxUnionCast<PxF32>(0xffffffff), physx::PxUnionCast<PxF32>(0xffffffff),
 	                                      physx::PxUnionCast<PxF32>(0xffffffff), 0 };
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic pop
-#endif
 #endif
 #else
 // emscripten doesn't like the PxUnionCast data structure
