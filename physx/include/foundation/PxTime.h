@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2023 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -32,7 +32,7 @@
 #include "foundation/PxSimpleTypes.h"
 #include "foundation/PxFoundationConfig.h"
 
-#if PX_LINUX
+#if PX_LINUX || PX_ANDROID
 #include <time.h>
 #endif
 
@@ -83,7 +83,7 @@ class PX_FOUNDATION_API PxTime
 	Second getLastTime() const;
 
   private:
-#if PX_LINUX || PX_APPLE_FAMILY
+#if PX_LINUX || PX_ANDROID || PX_APPLE_FAMILY
 	Second mLastTime;
 #else
 	PxI64 mTickCount;

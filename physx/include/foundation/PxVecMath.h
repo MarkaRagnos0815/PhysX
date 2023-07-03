@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2023 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -48,6 +48,12 @@
 // enable/disable SIMD
 #if !defined(PX_SIMD_DISABLED)
 #if PX_INTEL_FAMILY && (!defined(__EMSCRIPTEN__) || defined(__SSE2__))
+	#define COMPILE_VECTOR_INTRINSICS 1
+#elif PX_ANDROID && PX_NEON
+	#define COMPILE_VECTOR_INTRINSICS 1
+#elif PX_IOS && PX_NEON
+	#define COMPILE_VECTOR_INTRINSICS 1
+#elif PX_OSX && PX_NEON
 	#define COMPILE_VECTOR_INTRINSICS 1
 #elif PX_SWITCH
 	#define COMPILE_VECTOR_INTRINSICS 1

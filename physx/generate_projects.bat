@@ -2,7 +2,12 @@
 @call :CLEAN_EXIT
 @echo off
 
-call "%~dp0\buildtools\packman\packman" init
+pushd %~dp0
+set PHYSX_ROOT_DIR=%CD%
+popd
+SET PHYSX_ROOT_DIR=%PHYSX_ROOT_DIR:\=/%
+
+call "%PHYSX_ROOT_DIR%\buildtools\packman\packman" init
 set "PYTHONPATH=%PM_MODULE_DIR%;%PYTHONPATH%"
 
 IF %1.==. GOTO ADDITIONAL_PARAMS_MISSING
@@ -16,19 +21,22 @@ if not x%str1:.user=%==x%str1% (
   call "%~dp0buildtools\packman\packman.cmd" pull "%~dp0dependencies.xml" --platform %1
 )
 
-for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [15.0,16.0) -latest -property installationPath"`) do (
+
+IF "%PM_vswhere_PATH%" NEQ "" (
+  for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [15.0,16.0) -latest -property installationPath"`) do (
 	set Install2017Dir=%%i
 	set VS150PATH="%%i"
-)
+  )
 
-for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [16.0,17.0) -latest -property installationPath"`) do (
-  set Install2019Dir=%%i
+  for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [16.0,17.0) -latest -property installationPath"`) do (
+    set Install2019Dir=%%i
 	set VS160PATH="%%i"
-)
+  )
 
-for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [17.0,18.0) -latest -property installationPath"`) do (
+  for /f "usebackq tokens=*" %%i in (`"%PM_vswhere_PATH%\VsWhere.exe  -version [17.0,18.0) -latest -property installationPath"`) do (
 	set Install2022Dir=%%i
 	set VS170PATH="%%i"
+  )
 )
 
 if exist "%Install2017Dir%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt" (
@@ -68,7 +76,7 @@ if exist "%Install2022Dir%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.t
 )
 
 :ADDITIONAL_PARAMS_MISSING
-call "%~dp0buildtools\packman\python" "%~dp0buildtools\cmake_generate_projects.py" %1
+call "%~dp0buildtools\packman\python" %PHYSX_ROOT_DIR%/buildtools/cmake_generate_projects.py %1
 if %ERRORLEVEL% neq 0 (
   set /p DUMMY=Hit ENTER to continue...
   exit /b %errorlevel%

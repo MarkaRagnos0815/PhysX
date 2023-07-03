@@ -22,7 +22,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Copyright (c) 2008-2023 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
 // Copyright (c) 2004-2008 AGEIA Technologies, Inc. All rights reserved.
 // Copyright (c) 2001-2004 NovodeX AG. All rights reserved.
 
@@ -95,10 +95,19 @@ Operating system defines, see http://sourceforge.net/p/predef/wiki/OperatingSyst
 	#define PX_WIN64 1
 #elif defined(_WIN32) // note: _M_PPC implies _WIN32
 	#define PX_WIN32 1
-#elif defined(__linux__) || defined (__EMSCRIPTEN__)
+#elif defined(__ANDROID__)
+	#define PX_ANDROID 1
+#elif defined(__linux__) || defined (__EMSCRIPTEN__) // note: __ANDROID__ implies __linux__
 	#define PX_LINUX 1
 #elif defined(__APPLE__)
-	#define PX_OSX 1
+	#include <TargetConditionals.h>
+	#if TARGET_OS_IPHONE
+		#define PX_IOS 1
+	#elif TARGET_OS_OSX
+		#define PX_OSX 1
+	#else
+		#error "Unknown Apple target OS"
+	#endif
 #elif defined(__NX__)
 	#define PX_SWITCH 1
 #else
@@ -155,8 +164,14 @@ define anything not defined on this platform to 0
 #ifndef PX_WIN32
 	#define PX_WIN32 0
 #endif
+#ifndef PX_ANDROID
+	#define PX_ANDROID 0
+#endif
 #ifndef PX_LINUX
 	#define PX_LINUX 0
+#endif
+#ifndef PX_IOS
+	#define PX_IOS 0
 #endif
 #ifndef PX_OSX
 	#define PX_OSX 0
@@ -218,8 +233,8 @@ family shortcuts
 #define PX_GCC_FAMILY (PX_CLANG || PX_GCC)
 // os
 #define PX_WINDOWS_FAMILY (PX_WIN32 || PX_WIN64)
-#define PX_LINUX_FAMILY PX_LINUX
-#define PX_APPLE_FAMILY PX_OSX                              // equivalent to #if __APPLE__
+#define PX_LINUX_FAMILY (PX_LINUX || PX_ANDROID)
+#define PX_APPLE_FAMILY (PX_IOS || PX_OSX)                  // equivalent to #if __APPLE__
 #define PX_UNIX_FAMILY (PX_LINUX_FAMILY || PX_APPLE_FAMILY) // shortcut for unix/posix platforms
 #if defined(__EMSCRIPTEN__)
 	#define PX_EMSCRIPTEN 1
@@ -427,12 +442,9 @@ General defines
 #define PX_OFFSETOF_BASE 0x100 // casting the null ptr takes a special-case code path, which we don't want
 #define PX_OFFSET_OF_RT(Class, Member)	(reinterpret_cast<size_t>(&reinterpret_cast<Class*>(PX_OFFSETOF_BASE)->Member) - size_t(PX_OFFSETOF_BASE))
 
-
-#if PX_WINDOWS_FAMILY
-	// check that exactly one of NDEBUG and _DEBUG is defined
-	#if !defined(NDEBUG) ^ defined(_DEBUG)
-		#error Exactly one of NDEBUG and _DEBUG needs to be defined!
-	#endif
+// check that exactly one of NDEBUG and _DEBUG is defined
+#if !defined(NDEBUG) ^ defined(_DEBUG)
+	#error Exactly one of NDEBUG and _DEBUG needs to be defined!
 #endif
 
 // make sure PX_CHECKED is defined in all _DEBUG configurations as well
@@ -464,7 +476,7 @@ PX_CUDA_CALLABLE PX_INLINE void PX_UNUSED(T const&)
 		char _;
 		long a;
 	};
-#elif PX_CLANG && PX_ARM
+#elif PX_ANDROID || (PX_CLANG && PX_ARM)
 	struct PxPackValidation
 	{
 		char _;
@@ -515,7 +527,7 @@ protected:                  \
 #endif
 
 #ifndef PX_SUPPORT_EXTERN_TEMPLATE
-	#define PX_SUPPORT_EXTERN_TEMPLATE (PX_VC != 11)
+	#define PX_SUPPORT_EXTERN_TEMPLATE ((!PX_ANDROID) && (PX_VC != 11))
 #else
 	#define PX_SUPPORT_EXTERN_TEMPLATE 0
 #endif

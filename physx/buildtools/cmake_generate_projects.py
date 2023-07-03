@@ -20,12 +20,13 @@ def cmakeExt():
 
 
 def filterPreset(presetName):
-    winPresetFilter = ['win','switch','crosscompile']
-    if sys.platform == 'win32':
+    winPresetFilter = ['win','switch','crosscompile','android']
+    otherPresetFilter = ['win','switch','crosscompile']
+    if sys.platform == 'win32':        
         if any(presetName.find(elem) != -1 for elem in winPresetFilter):
             return True
-    else:
-        if all(presetName.find(elem) == -1 for elem in winPresetFilter):
+    else:        
+        if all(presetName.find(elem) == -1 for elem in otherPresetFilter):
             return True
     return False
 
@@ -53,12 +54,12 @@ def noPresetProvided():
                 print('(' + str(counter) + ') ' + presetXml.get('name') +
                     '.user <--- ' + presetXml.get('comment'))
                 presetList.append(presetXml.get('name') + '.user')
-            counter = counter + 1
+            counter = counter + 1            
     # Fix Python 2.x.
-    try:
+    try: 
     	input = raw_input
-    except NameError:
-    	pass
+    except NameError: 
+    	pass    
     mode = int(eval(input('Enter preset number: ')))
     return presetList[mode]
 
@@ -101,6 +102,14 @@ class CMakePreset:
                 cmParam = '-D' + cmakeParam.attrib['name'] + '=\"' + \
                     os.environ['PHYSX_ROOT_DIR'] + '/' + \
                     cmakeParam.attrib['value'] + '\"'
+            elif cmakeParam.attrib['name'] == 'ANDROID_ABI':
+                cmParam = '-D' + \
+                    cmakeParam.attrib['name'] + '=\"' + \
+                    cmakeParam.attrib['value'] + '\"'
+                if cmakeParam.attrib['value'].startswith('arm'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=arm'
+                elif cmakeParam.attrib['value'].startswith('x86'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=x86'
             else:
                 cmParam = '-D' + \
                     cmakeParam.attrib['name'] + '=' + \
@@ -113,69 +122,110 @@ class CMakePreset:
             return False
         elif self.targetPlatform == 'linuxAarch64':
             return False
+        elif self.targetPlatform == 'android':
+            return False
         return True
 
     def getCMakeSwitches(self):
         outString = ''
-        # We need gpuProjectsFound flag to avoid issues when we have both
-        # PX_GENERATE_GPU_PROJECTS and PX_GENERATE_GPU_PROJECTS_ONLY switches
-        gpuProjectsFound = False  # initialize flag
         for cmakeSwitch in self.cmakeSwitches:
             outString = outString + ' ' + cmakeSwitch
-            if not gpuProjectsFound and cmakeSwitch.find('PX_GENERATE_GPU_PROJECTS') != -1:
-                gpuProjectsFound = True  # set flag to True when keyword found
+            if cmakeSwitch.find('PX_GENERATE_GPU_PROJECTS') != -1:
                 if os.environ.get('PM_CUDA_PATH') is not None:
-                    outString = outString + ' -DCUDAToolkit_ROOT_DIR=' + \
-                            os.environ['PM_CUDA_PATH']
-                    if self.compiler in ['vc15', 'vc16', 'vc17']:
-                        outString = outString + ' -T cuda=' + os.environ['PM_CUDA_PATH']
-                    # TODO: Need to do the same for gcc (aarch64) when we package it with Packman
-                    elif self.compiler == 'clang':
-                        if os.environ.get('PM_clang_PATH') is not None:
-                            outString = outString + ' -DCMAKE_CUDA_HOST_COMPILER=' + \
-                                os.environ['PM_clang_PATH'] + '/bin/clang++'
+                    outString = outString + ' -DCUDA_TOOLKIT_ROOT_DIR=' + \
+                        os.environ['PM_CUDA_PATH']
+                if self.compiler == 'vc15':
+                    print('VS15CL:' + os.environ['VS150CLPATH'])
+                    outString = outString + ' -DCUDA_HOST_COMPILER=' + \
+                        os.environ['VS150CLPATH']
+                if self.compiler == 'vc16':
+                    print('VS16CL:' + os.environ['VS160CLPATH'])
+                    outString = outString + ' -DCUDA_HOST_COMPILER=' + \
+                        os.environ['VS160CLPATH']
+                if self.compiler == 'vc17':
+                    print('VS17CL:' + os.environ['VS170CLPATH'])
+                    outString = outString + ' -DCUDA_HOST_COMPILER=' + \
+                        os.environ['VS170CLPATH']                        
+
         return outString
 
     def getCMakeParams(self):
         outString = ''
         for cmakeParam in self.cmakeParams:
-            outString = outString + ' ' + cmakeParam # + ' --trace'
+            outString = outString + ' ' + cmakeParam
         return outString
 
     def getPlatformCMakeParams(self):
-        cmake_modules_root = os.environ['PHYSX_ROOT_DIR'] + '/source/compiler/cmake/modules'
         outString = ' '
-        if self.compiler == 'vc15':
+        if self.compiler == 'vc12':
+            outString = outString + '-G \"Visual Studio 12 2013\"'
+        elif self.compiler == 'vc14':
+            outString = outString + '-G \"Visual Studio 14 2015\"'
+        elif self.compiler == 'vc15':
             outString = outString + '-G \"Visual Studio 15 2017\"'
         elif self.compiler == 'vc16':
             outString = outString + '-G \"Visual Studio 16 2019\"'
         elif self.compiler == 'vc17':
-            outString = outString + '-G \"Visual Studio 17 2022\"'
+            outString = outString + '-G \"Visual Studio 17 2022\"'            
         elif self.compiler == 'xcode':
             outString = outString + '-G Xcode'
+        elif self.targetPlatform == 'android':
+            outString = outString + '-G \"Unix Makefiles\"'
+            #outString = outString + '-G \"MinGW Makefiles\"'
         elif self.targetPlatform == 'linux':
             outString = outString + '-G \"Unix Makefiles\"'
         elif self.targetPlatform == 'linuxAarch64':
             outString = outString + '-G \"Unix Makefiles\"'
 
-        if self.targetPlatform == 'win64':
+        if self.targetPlatform == 'win32':
+            outString = outString + ' -AWin32'
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=windows'
+            outString = outString + ' -DPX_OUTPUT_ARCH=x86'
+            return outString
+        elif self.targetPlatform == 'win64':
             outString = outString + ' -Ax64'
             outString = outString + ' -DTARGET_BUILD_PLATFORM=windows'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
             return outString
+        elif self.targetPlatform == 'switch32':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=switch'
+            outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
+                os.environ['PM_CMakeModules_PATH'] + \
+                '/switch/NX32Toolchain.txt'
+            outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=NX32'
+            return outString
         elif self.targetPlatform == 'switch64':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=switch'
             outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                cmake_modules_root + '/switch/NX64Toolchain.txt'
+                os.environ['PM_CMakeModules_PATH'] + \
+                '/switch/NX64Toolchain.txt'
             outString = outString + ' -DCMAKE_GENERATOR_PLATFORM=NX64'
+            return outString
+        elif self.targetPlatform == 'android':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=android'
+            if os.environ.get('ANDROID_NDK_HOME') is None:
+                print('Please provide path to android NDK in environment variable ANDROID_NDK_HOME.')
+                exit(-1)
+            else:
+                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
+                    os.environ['ANDROID_NDK_HOME'] + \
+                    '/build/cmake/android.toolchain.cmake'
+                outString = outString + ' -DANDROID_STL=\"c++_static\"'
+                outString = outString + ' -DCM_ANDROID_FP=\"softfp\"'
+                outString = outString + ' -DANDROID_NDK=' + \
+                    os.environ['ANDROID_NDK_HOME']
+                if sys.platform == 'win32':        
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '\\prebuilt\\windows-x86_64\\bin\\make.exe\"'
+                else:
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '/prebuilt/linux-x86_64/bin/make\"'
             return outString
         elif self.targetPlatform == 'linux':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=linux'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
             if self.compiler == 'clang-crosscompile':
                 outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    cmake_modules_root + '/linux/LinuxCrossToolchain.x86_64-unknown-linux-gnu.cmake'
-                outString = outString + ' -DCMAKE_MAKE_PROGRAM=' + os.environ.get('PM_MinGW_PATH') + '/bin/mingw32-make.exe'
+                    os.environ['PM_CMakeModules_PATH'] + \
+                    '/linux/LinuxCrossToolchain.x86_64-unknown-linux-gnu.cmake'
             elif self.compiler == 'clang':
                 if os.environ.get('PM_clang_PATH') is not None:
                     outString = outString + ' -DCMAKE_C_COMPILER=' + \
@@ -191,17 +241,28 @@ class CMakePreset:
             outString = outString + ' -DPX_OUTPUT_ARCH=arm'
             if self.compiler == 'clang-crosscompile':
                 outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
-                    cmake_modules_root + '/linux/LinuxCrossToolchain.aarch64-unknown-linux-gnueabihf.cmake'
-                outString = outString + ' -DCMAKE_MAKE_PROGRAM=' + os.environ.get('PM_MinGW_PATH') + '/bin/mingw32-make.exe'
+                    os.environ['PM_CMakeModules_PATH'] + \
+                    '/linux/LinuxCrossToolchain.aarch64-unknown-linux-gnueabihf.cmake'
             elif self.compiler == 'gcc':
-                # TODO: To change so it uses Packman's compiler. Then add it as
-                # host compiler for CUDA above.
                 outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=\"' + \
-                    cmake_modules_root + '/linux/LinuxAarch64.cmake\"'
+                    os.environ['PM_CMakeModules_PATH'] + \
+                    '/linux/LinuxAarch64.cmake\"'
             return outString
         elif self.targetPlatform == 'mac64':
             outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
+            return outString
+        elif self.targetPlatform == 'macArm64':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
+            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
+            return outString
+        elif self.targetPlatform == 'ios64':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=ios'
+            outString = outString + ' -DCMAKE_SYSTEM_NAME=iOS'
+            outString = outString + ' -DCMAKE_SYSTEM_VERSION=1'
+            outString = outString + ' -DCMAKE_OSX_ARCHITECTURES=arm64'
+            outString = outString + ' -DCMAKE_OSX_SYSROOT=iphoneos'
+            outString = outString + ' -DPX_OUTPUT_ARCH=arm'
             return outString
         return ''
 
@@ -231,13 +292,14 @@ def cleanupCompilerDir(compilerDirName):
 def presetProvided(pName):
     parsedPreset = CMakePreset(pName)
 
-    print('PM_PATHS: ' + os.environ['PM_PATHS'])
+    #print('PM_CMakeModules_PATH: ' + os.environ['PM_CMakeModules_PATH'])
+    #print('PM_PATHS: ' + os.environ['PM_PATHS'])
 
     if os.environ.get('PM_cmake_PATH') is not None:
         cmakeExec = os.environ['PM_cmake_PATH'] + '/bin/cmake' + cmakeExt()
     else:
         cmakeExec = 'cmake' + cmakeExt()
-    print('Cmake: ' + cmakeExec)
+    #print('Cmake: ' + cmakeExec)
 
     # gather cmake parameters
     cmakeParams = parsedPreset.getPlatformCMakeParams()
@@ -258,8 +320,8 @@ def presetProvided(pName):
         # run the cmake script
         #print('Cmake params:' + cmakeParams)
         os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
-        os.system(cmakeExec + ' \"' +
-                  os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams)
+        #print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams)
+        os.system(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams)
         os.chdir(os.environ['PHYSX_ROOT_DIR'])
     else:
         configs = ['debug', 'checked', 'profile', 'release']
@@ -271,9 +333,8 @@ def presetProvided(pName):
             # run the cmake script
             #print('Cmake params:' + cmakeParams)
             os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
-            # print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
-            os.system(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' +
-                      cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
+            #print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
+            os.system(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
             os.chdir(os.environ['PHYSX_ROOT_DIR'])
     pass
 
@@ -282,8 +343,6 @@ def main():
     if (sys.version_info[0] < 3) or (sys.version_info[0] == 3 and sys.version_info[1] < 5):
         print("You are using Python {}. You must use Python 3.5 and up. Please read README.md for requirements.").format(sys.version)
         exit()
-    physx_root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-    os.environ['PHYSX_ROOT_DIR'] = physx_root_dir.replace("\\", "/")
     if len(sys.argv) != 2:
         presetName = noPresetProvided()
         if sys.platform == 'win32':
@@ -293,7 +352,7 @@ def main():
             # TODO: catch exception and add capture errors
         else:
             print('Running generate_projects.sh ' + presetName)
-            # TODO: once we have Python 3.7.2 for linux, add the text=True instead of universal_newlines
+            # TODO: once we have Python 3.7.2 for linux, add the text=True instead of universal_newlines 
             cmd = './generate_projects.sh {}'.format(presetName)
             result = subprocess.run(['bash', './generate_projects.sh', presetName], cwd=os.environ['PHYSX_ROOT_DIR'], check=True, universal_newlines=True)
             # TODO: catch exception and add capture errors
