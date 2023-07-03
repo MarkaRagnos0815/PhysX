@@ -38,10 +38,8 @@ namespace aos
 {
 
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-variable-declarations"
-#endif
 #endif
 
 #define PX_GLOBALCONST extern const __attribute__((weak))
@@ -66,11 +64,10 @@ PX_GLOBALCONST PX_VECTORF32 g_PXReciprocalTwoPi = { { PxInvTwoPi, PxInvTwoPi, Px
 PX_GLOBALCONST PX_VECTORF32 g_PXTwoPi = { { PxTwoPi, PxTwoPi, PxTwoPi, PxTwoPi } };
 
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic pop
-#endif
 #endif
 } // namespace aos
 } // namespace physx
 
 #endif //PXFOUNDATION_PXUNIXTRIGCONSTANTS_H
+
