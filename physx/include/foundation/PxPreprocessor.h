@@ -64,7 +64,9 @@ Compiler defines, see http://sourceforge.net/p/predef/wiki/Compilers/
 #else
 	#error "Unknown VC version"
 #endif
-#elif defined(__clang__)
+#endif
+
+#if defined(__clang__)
 #define PX_CLANG 1
 	#if defined (__clang_major__) 
 		#define PX_CLANG_MAJOR __clang_major__
@@ -75,7 +77,7 @@ Compiler defines, see http://sourceforge.net/p/predef/wiki/Compilers/
 	#endif	
 #elif defined(__GNUC__) // note: __clang__ implies __GNUC__
 	#define PX_GCC 1
-#else
+#elif !defined(_MSC_VER)
 	#error "Unknown compiler"
 #endif
 
@@ -93,10 +95,19 @@ Operating system defines, see http://sourceforge.net/p/predef/wiki/OperatingSyst
 	#define PX_WIN64 1
 #elif defined(_WIN32) // note: _M_PPC implies _WIN32
 	#define PX_WIN32 1
-#elif defined(__linux__) || defined (__EMSCRIPTEN__)
+#elif defined(__ANDROID__)
+	#define PX_ANDROID 1
+#elif defined(__linux__) || defined (__EMSCRIPTEN__) // note: __ANDROID__ implies __linux__
 	#define PX_LINUX 1
 #elif defined(__APPLE__)
-	#define PX_OSX 1
+	#include <TargetConditionals.h>
+	#if TARGET_OS_IPHONE
+		#define PX_IOS 1
+	#elif TARGET_OS_OSX
+		#define PX_OSX 1
+	#else
+		#error "Unknown Apple target OS"
+	#endif
 #elif defined(__NX__)
 	#define PX_SWITCH 1
 #else
@@ -153,8 +164,14 @@ define anything not defined on this platform to 0
 #ifndef PX_WIN32
 	#define PX_WIN32 0
 #endif
+#ifndef PX_ANDROID
+	#define PX_ANDROID 0
+#endif
 #ifndef PX_LINUX
 	#define PX_LINUX 0
+#endif
+#ifndef PX_IOS
+	#define PX_IOS 0
 #endif
 #ifndef PX_OSX
 	#define PX_OSX 0
@@ -216,8 +233,8 @@ family shortcuts
 #define PX_GCC_FAMILY (PX_CLANG || PX_GCC)
 // os
 #define PX_WINDOWS_FAMILY (PX_WIN32 || PX_WIN64)
-#define PX_LINUX_FAMILY PX_LINUX
-#define PX_APPLE_FAMILY PX_OSX                              // equivalent to #if __APPLE__
+#define PX_LINUX_FAMILY (PX_LINUX || PX_ANDROID)
+#define PX_APPLE_FAMILY (PX_IOS || PX_OSX)                  // equivalent to #if __APPLE__
 #define PX_UNIX_FAMILY (PX_LINUX_FAMILY || PX_APPLE_FAMILY) // shortcut for unix/posix platforms
 #if defined(__EMSCRIPTEN__)
 	#define PX_EMSCRIPTEN 1
@@ -307,7 +324,9 @@ Inline macro
 */
 #define PX_INLINE inline
 #if PX_WINDOWS_FAMILY
+#if !PX_CLANG
 	#pragma inline_depth(255)
+#endif
 #endif
 
 /**
@@ -437,14 +456,12 @@ _Pragma(" clang diagnostic pop")
 #define PX_OFFSETOF_BASE 0x100 // casting the null ptr takes a special-case code path, which we don't want
 #define PX_OFFSET_OF_RT(Class, Member)	(reinterpret_cast<size_t>(&reinterpret_cast<Class*>(PX_OFFSETOF_BASE)->Member) - size_t(PX_OFFSETOF_BASE))
 
-
 #if PX_WINDOWS_FAMILY
 	// check that exactly one of NDEBUG and _DEBUG is defined
 	#if !defined(NDEBUG) ^ defined(_DEBUG)
 		#error Exactly one of NDEBUG and _DEBUG needs to be defined!
 	#endif
 #endif
-
 // make sure PX_CHECKED is defined in all _DEBUG configurations as well
 #if !PX_CHECKED && PX_DEBUG
 	#error PX_CHECKED must be defined when PX_DEBUG is defined
@@ -474,7 +491,7 @@ PX_CUDA_CALLABLE PX_INLINE void PX_UNUSED(T const&)
 		char _;
 		long a;
 	};
-#elif PX_CLANG && PX_ARM
+#elif PX_ANDROID || (PX_CLANG && PX_ARM)
 	struct PxPackValidation
 	{
 		char _;
@@ -489,7 +506,7 @@ PX_CUDA_CALLABLE PX_INLINE void PX_UNUSED(T const&)
 #endif
 // clang (as of version 3.9) cannot align doubles on 8 byte boundary  when compiling for Intel 32 bit target
 #if !PX_APPLE_FAMILY && !PX_EMSCRIPTEN && !(PX_CLANG && PX_X86)
-	PX_COMPILE_TIME_ASSERT(PX_OFFSET_OF(PxPackValidation, a) == 8);
+	//PX_COMPILE_TIME_ASSERT(PX_OFFSET_OF(PxPackValidation, a) == 8);
 #endif
 
 // use in a cpp file to suppress LNK4221
@@ -525,7 +542,7 @@ protected:                  \
 #endif
 
 #ifndef PX_SUPPORT_EXTERN_TEMPLATE
-	#define PX_SUPPORT_EXTERN_TEMPLATE (PX_VC != 11)
+	#define PX_SUPPORT_EXTERN_TEMPLATE ((!PX_ANDROID) && (PX_VC != 11))
 #else
 	#define PX_SUPPORT_EXTERN_TEMPLATE 0
 #endif

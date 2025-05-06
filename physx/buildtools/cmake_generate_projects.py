@@ -14,12 +14,14 @@ def cmakeExt():
 
 
 def filterPreset(presetName):
-    winPresetFilter = ['win','switch','crosscompile']
+    winPresetFilter = ['win','switch','crosscompile','android']
+    otherPresetFilter = ['win','switch','crosscompile']
+    
     if sys.platform == 'win32':
         if any((presetName.find(elem) != -1 and 'windows-crosscompile' not in presetName) for elem in winPresetFilter):
             return True
     else:
-        if all((presetName.find(elem) == -1 or 'windows-crosscompile' in presetName) for elem in winPresetFilter):
+        if all((presetName.find(elem) == -1 or 'windows-crosscompile' in presetName) for elem in otherPresetFilter):
             return True
     return False
 
@@ -61,6 +63,7 @@ def noPresetProvided(physx_root_dir):
 class CMakePreset:
     presetName = ''
     targetPlatform = ''
+    targetToolSet = ''
     compiler = ''
     generator = ''
     cmakeSwitches = []
@@ -89,6 +92,9 @@ class CMakePreset:
                   ' using compiler: ' + self.compiler)
             if self.generator is not None:
                 print(' using generator: ' + self.generator)
+            if 'targetToolSet' in platform.attrib:
+                self.targetToolSet = platform.attrib['targetToolSet']
+
 
         for cmakeSwitch in presetNode.find('CMakeSwitches'):
             cmSwitch = '-D' + \
@@ -101,6 +107,14 @@ class CMakePreset:
                 cmParam = '-D' + cmakeParam.attrib['name'] + '=\"' + \
                     os.environ['PHYSX_ROOT_DIR'] + '/' + \
                     cmakeParam.attrib['value'] + '\"'
+            elif cmakeParam.attrib['name'] == 'ANDROID_ABI':
+                cmParam = '-D' + \
+                    cmakeParam.attrib['name'] + '=\"' + \
+                    cmakeParam.attrib['value'] + '\"'
+                if cmakeParam.attrib['value'].startswith('arm'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=arm'
+                elif cmakeParam.attrib['value'].startswith('x86'):
+                    cmParam = cmParam + ' -DPX_OUTPUT_ARCH=x86'
             else:
                 cmParam = '-D' + \
                     cmakeParam.attrib['name'] + '=' + \
@@ -112,6 +126,8 @@ class CMakePreset:
         if self.targetPlatform == 'linux':
             return False
         elif self.targetPlatform == 'linuxAarch64':
+            return False
+        elif self.targetPlatform == 'android':
             return False
         elif self.compiler == 'x86_64-w64-mingw32-g++':
             return False
@@ -193,7 +209,10 @@ class CMakePreset:
         # Visual studio
         if self.compiler in vs_versions:
             generator = '-G \"Ninja Multi-Config\"' if self.generator == 'ninja' else '-G ' + vs_versions[self.compiler]
+            if self.targetToolSet != None and len(self.targetToolSet) > 0 :
+                generator += ' -T ' + self.targetToolSet
             outString += generator
+
         # Windows crosscompile
         elif self.compiler == 'x86_64-w64-mingw32-g++':
             outString = outString + '-G \"Ninja\"'
@@ -207,6 +226,9 @@ class CMakePreset:
                 outString = outString + ' -DCMAKE_MAKE_PROGRAM=' + os.environ['PM_ninja_PATH'] + '/ninja'
             else:
                 outString = outString + '-G \"Unix Makefiles\"'
+        elif self.targetPlatform == 'android':
+            outString = outString + '-G \"Unix Makefiles\"'
+       
 
         if self.targetPlatform == 'win64':
             if self.generator != 'ninja':
@@ -267,6 +289,26 @@ class CMakePreset:
             outString = outString + ' -DTARGET_BUILD_PLATFORM=mac'
             outString = outString + ' -DPX_OUTPUT_ARCH=x86'
             return outString
+        elif self.targetPlatform == 'android':
+            outString = outString + ' -DTARGET_BUILD_PLATFORM=android'
+            if os.environ.get('ANDROID_NDK_HOME') is None:
+                print('Please provide path to android NDK in environment variable ANDROID_NDK_HOME.')
+                exit(-1)
+            else:
+                outString = outString + ' -DCMAKE_TOOLCHAIN_FILE=' + \
+                    os.environ['ANDROID_NDK_HOME'] + \
+                    '/build/cmake/android.toolchain.cmake'
+                outString = outString + ' -DANDROID_STL=\"c++_static\"'
+                outString = outString + ' -DCM_ANDROID_FP=\"softfp\"'
+                outString = outString + ' -DANDROID_NDK=' + \
+                    os.environ['ANDROID_NDK_HOME']
+                if sys.platform == 'win32':        
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '\\prebuilt\\windows-x86_64\\bin\\make.exe\"'
+                else:
+                    outString = outString + ' -DCMAKE_MAKE_PROGRAM=\"' + os.environ['ANDROID_NDK_HOME'] + '/prebuilt/linux-x86_64/bin/make\"'
+            return outString
+
+
         return ''
 
 
@@ -317,7 +359,7 @@ def presetProvided(pName, physx_root_dir):
     if parsedPreset.isMultiConfigPlatform():
         # cleanup and create output directory
         outputDir = os.path.join(physx_root_dir, 'compiler', parsedPreset.presetName)
-        cleanupCompilerDir(outputDir)
+        #cleanupCompilerDir(outputDir)
 
         # run the cmake script
         #print('Cmake params:' + cmakeParams)
@@ -330,7 +372,7 @@ def presetProvided(pName, physx_root_dir):
         for config in configs:
             # cleanup and create output directory
             outputDir = os.path.join(physx_root_dir, 'compiler', parsedPreset.presetName + '-' + config)
-            cleanupCompilerDir(outputDir)
+            #cleanupCompilerDir(outputDir)
 
             # run the cmake script
             #print('Cmake params:' + cmakeParams)
