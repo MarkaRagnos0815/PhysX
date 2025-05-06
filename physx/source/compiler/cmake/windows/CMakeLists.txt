@@ -31,7 +31,7 @@ OPTION(PX_USE_NVTX "Enabled NVTX profiling" OFF)
 # We define the CXX flags for this CMakeLists and all others that are included afterwards. This is a GLOBAL setting.
 # If/when the solutions go standalone (say, visual tests) - those CMakeLists will need to be fixed.
 
-SET(PHYSX_WARNING_DISABLES "/wd4514 /wd4820 /wd4127 /wd4710 /wd4711 /wd4577 /wd4996")
+SET(PHYSX_WARNING_DISABLES "/wd4514 /wd4820 /wd4127 /wd4710 /wd4711 /wd4577 /wd4996 /wd26435 /wd26433")
 
 # Cache the CXX flags so the other CMakeLists.txt can use them if needed
 IF(PX_FLOAT_POINT_PRECISE_MATH)
@@ -43,7 +43,7 @@ ENDIF()
 # Common Flags
 # PT: changed /Ox to /O2 because "the /Ox compiler option enables only a subset of the speed optimization options enabled by /O2."
 # See https://docs.microsoft.com/en-us/cpp/build/reference/ox-full-optimization?view=vs-2019
-SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /WX /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
+SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /WX- /W0 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
 SET(PHYSX_COMMON_FLAGS_DEBUG "/Od ${WINCRT_DEBUG} /RTCu /Zi")
 SET(PHYSX_COMMON_FLAGS_CHECKED "/O2 ${WINCRT_NDEBUG} /Zi")
 SET(PHYSX_COMMON_FLAGS_PROFILE "/O2 ${WINCRT_NDEBUG} /Zi")

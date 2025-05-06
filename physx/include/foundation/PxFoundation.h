@@ -153,16 +153,12 @@ PX_C_EXPORT PX_FOUNDATION_API void PX_CALL_CONV PxSetFoundationInstance(physx::P
 \see PxCreateFoundation(), PxIsFoundationValid()
 */
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
-#endif // PX_LINUX
 #endif // PX_CLANG
 PX_C_EXPORT PX_FOUNDATION_API physx::PxFoundation& PX_CALL_CONV PxGetFoundation();
 #if PX_CLANG
-#if PX_LINUX
 #pragma clang diagnostic pop
-#endif // PX_LINUX
 #endif // PX_CLANG
 
 /**

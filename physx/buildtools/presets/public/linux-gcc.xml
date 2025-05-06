@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <preset name="linux-gcc" comment="Linux gcc PhysX SDK general settings">
-  <platform targetPlatform="linux" compiler="gcc" />
+  <platform targetPlatform="linux" compiler="gcc" generator="ninja"/>
   <CMakeSwitches>
-    <cmakeSwitch name="PX_BUILDSNIPPETS" value="True" comment="Generate the snippets" />
-    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="True" comment="Generate the OmniPVD project" />
+    <cmakeSwitch name="PX_BUILDSNIPPETS" value="False" comment="Generate the snippets" />
+    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="False" comment="Generate the OmniPVD project" />
     <cmakeSwitch name="PX_GENERATE_STATIC_LIBRARIES" value="True" comment="Generate static libs" />
     <cmakeSwitch name="PX_GENERATE_GPU_PROJECTS" value="True" comment="Generate the GPU projects, if possible." />
     <cmakeSwitch name="PX_GENERATE_GPU_PROJECTS_ONLY" value="False" comment="Generate ONLY the GPU projects, if possible." />

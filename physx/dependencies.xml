@@ -4,7 +4,7 @@
 	</dependency>
 
 	<dependency name="vswhere">
-		<package name="VsWhere" version="2.7.3111.17308_1.0"  platforms="vc15win64* vc16win64* vc17win64* linux-crosscompile linux-aarch64-crosscompile "/>
+		<package name="VsWhere" version="2.7.3111.17308_1.0"  platforms="vc15win64* vc16win64* vc17win64* linux-crosscompile linux-aarch64-crosscompile android*"/>
 	</dependency>
 
 	<dependency name="freeglut">

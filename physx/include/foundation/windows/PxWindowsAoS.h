@@ -42,15 +42,60 @@ namespace physx
 namespace aos
 {
 
+typedef union UnionM128
+{
+	UnionM128()
+	{
+	}
+	UnionM128(__m128 in)
+	{
+		m128 = in;
+	}
+
+	UnionM128(__m128i in)
+	{
+		m128i = in;
+	}
+
+	operator __m128()
+	{
+		return m128;
+	}
+
+	operator __m128() const
+	{
+		return m128;
+	}
+
+	float m128_f32[4];
+	int8_t m128_i8[16];
+	int16_t m128_i16[8];
+	int32_t m128_i32[4];
+	int64_t m128_i64[2];
+	uint16_t m128_u16[8];
+	uint32_t m128_u32[4];
+	uint64_t m128_u64[2];
+	__m128 m128;
+	__m128i m128i;
+} UnionM128;
+
 typedef __m128 FloatV;
 typedef __m128 Vec3V;
 typedef __m128 Vec4V;
 typedef __m128 BoolV;
+#if PX_CLANG
+typedef UnionM128 VecI32V;
+typedef UnionM128 VecU32V;
+typedef UnionM128 VecU16V;
+typedef UnionM128 VecI16V;
+#else
 typedef __m128 VecU32V;
 typedef __m128 VecI32V;
 typedef __m128 VecU16V;
 typedef __m128 VecI16V;
+#endif
 typedef __m128 QuatV;
+
 
 #define FloatVArg FloatV &
 #define Vec3VArg Vec3V &

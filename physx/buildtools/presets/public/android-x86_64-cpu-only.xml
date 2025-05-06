@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<preset name="android-x86_64-cpu-only" comment="Android-29, x86_64 PhysX SDK ">
+  <platform targetPlatform="android" compiler="clang" generator="ninja"/>
+  <CMakeSwitches>
+    <cmakeSwitch name="PX_GENERATE_STATIC_LIBRARIES" value="True" comment="Generate static libs" />  
+    <cmakeSwitch name="PX_BUILDSNIPPETS" value="False" comment="Generate the snippets" />
+    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="False" comment="Generate the OmniPVD project" />
+  </CMakeSwitches>
+  <CMakeParams>
+    <cmakeParam name="CMAKE_INSTALL_PREFIX" value="install/android-29/PhysX" comment="Install path relative to PhysX SDK root" />
+    <cmakeParam name="ANDROID_NATIVE_API_LEVEL" value="android-29" comment="Android platform API level" />
+    <cmakeParam name="ANDROID_ABI" value="x86_64" comment="Android arm x86_64 ABI" />
+  </CMakeParams>
+</preset>

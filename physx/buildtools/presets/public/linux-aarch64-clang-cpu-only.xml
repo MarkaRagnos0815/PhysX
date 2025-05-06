@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <preset name="linux-aarch64-clang-cpu-only" comment="Linux-aarch64 clang PhysX SDK general settings (cpu only)">
-  <platform targetPlatform="linuxAarch64" compiler="clang" />
+  <platform targetPlatform="linuxAarch64" compiler="clang" generator="ninja"/>
   <CMakeSwitches>
-    <cmakeSwitch name="PX_BUILDSNIPPETS" value="True" comment="Generate the snippets" />
-    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="True" comment="Generate the OmniPVD project" />
+    <cmakeSwitch name="PX_BUILDSNIPPETS" value="False" comment="Generate the snippets" />
+    <cmakeSwitch name="PX_BUILDPVDRUNTIME" value="False" comment="Generate the OmniPVD project" />
     <cmakeSwitch name="PX_GENERATE_STATIC_LIBRARIES" value="True" comment="Generate static libs" />    
   </CMakeSwitches>
   <CMakeParams>
